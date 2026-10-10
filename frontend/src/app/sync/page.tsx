@@ -83,6 +83,22 @@ export default function SyncDashboardPage() {
   }, []);
 
   useEffect(() => {
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      const reasonStr = (e.reason?.stack || e.reason?.message || e.reason?.toString() || '');
+      if (
+        reasonStr.includes('MetaMask') ||
+        reasonStr.includes('chrome-extension://') ||
+        reasonStr.includes('moz-extension://')
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleRejection, true);
+    return () => window.removeEventListener('unhandledrejection', handleRejection, true);
+  }, []);
+
+  useEffect(() => {
     fetchVouchers();
     fetchIssues();
   }, [fetchVouchers, fetchIssues]);
