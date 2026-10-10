@@ -97,6 +97,17 @@ func main() {
 		writeJSON(w, statusCode, resp)
 	})
 
+	// GET /issues
+	mux.HandleFunc("GET /issues", func(w http.ResponseWriter, r *http.Request) {
+		issues, err := receiptSvc.ListIssues(r.Context())
+		if err != nil {
+			log.Printf("Error querying issues: %v", err)
+			writeError(w, http.StatusInternalServerError, "Failed to query issues")
+			return
+		}
+		writeJSON(w, http.StatusOK, issues)
+	})
+
 	// GET /issues/{id}
 	mux.HandleFunc("GET /issues/{id}", func(w http.ResponseWriter, r *http.Request) {
 		issueID := r.PathValue("id")

@@ -254,3 +254,43 @@ func (s *ReceiptService) GetIssueSummary(ctx context.Context, issueID string) (*
 
 	return &summary, nil
 }
+
+// ListIssues returns all jobwork issues with their current status and remaining balance.
+func (s *ReceiptService) ListIssues(ctx context.Context) ([]models.IssueSummary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT 
+			i.id, i.party_id, p.name AS party_name, p.phone AS party_phone,
+			i.sku_id, s.code AS sku_code, s.name AS sku_name, s.image_url AS sku_image_url,
+			i.qty AS issued_qty,
+			COALESCE(SUM(r.qty), 0)::int AS total_received_qty,
+			(i.qty - COALESCE(SUM(r.qty), 0))::int AS outstanding_qty,
+			i.issued_on::text AS issued_on,
+			i.created_at
+		FROM jobwork_issues i
+		JOIN parties p ON p.id = i.party_id
+		JOIN skus s ON s.id = i.sku_id
+		LEFT JOIN jobwork_receipts r ON r.issue_id = i.id
+		GROUP BY i.id, p.name, p.phone, s.code, s.name, s.image_url
+		ORDER BY i.created_at DESC;
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query issues: %w", err)
+	}
+	defer rows.Close()
+
+	list := make([]models.IssueSummary, 0)
+	for rows.Next() {
+		var summary models.IssueSummary
+		if err := rows.Scan(
+			&summary.ID, &summary.PartyID, &summary.PartyName, &summary.PartyPhone,
+			&summary.SKUID, &summary.SKUCode, &summary.SKUName, &summary.SKUImageURL,
+			&summary.IssuedQty, &summary.TotalReceivedQty, &summary.OutstandingQty,
+			&summary.IssuedOn, &summary.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan issue summary: %w", err)
+		}
+		list = append(list, summary)
+	}
+
+	return list, nil
+}
