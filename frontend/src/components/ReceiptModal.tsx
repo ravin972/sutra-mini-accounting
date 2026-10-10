@@ -8,7 +8,9 @@ import {
   AlertCircle, 
   Copy, 
   Check, 
-  Zap
+  Zap,
+  Image as ImageIcon,
+  Scissors
 } from 'lucide-react';
 import { IssueSummary } from '../types';
 
@@ -40,7 +42,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     if (preselectedIssueId) {
       setSelectedIssueId(preselectedIssueId);
     } else if (issues.length > 0 && !selectedIssueId) {
-      setSelectedIssueId(issues[0].id);
+      // Pick first non-completed issue if available
+      const openIssue = issues.find((i) => i.outstanding_qty > 0) || issues[0];
+      setSelectedIssueId(openIssue.id);
     }
   }, [preselectedIssueId, issues, selectedIssueId]);
 
@@ -56,7 +60,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const currentIssue = issues.find((i) => i.id === selectedIssueId);
   const maxAvailable = currentIssue ? currentIssue.outstanding_qty : 0;
   const isOvershoot = qty > maxAvailable;
-  const estimatedPaise = qty * 25000;
+  const estimatedPaise = qty * 65000; // ~₹650 standard piece rate in paise
 
   const formatINR = (paise: number) => {
     return (paise / 100).toLocaleString('en-IN', {
@@ -98,7 +102,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               Record Jobwork Receipt
             </h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-              Dispatches an outbox voucher atomically to the accounting ledger
+              Creates transactional receipt & outbox accounting voucher atomically
             </p>
           </div>
           <button 
@@ -124,34 +128,57 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               >
                 {issues.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.party_name} — {i.sku_name} ({i.outstanding_qty} pcs remaining)
+                    {i.party_name} — {i.sku_name} ({i.outstanding_qty} pcs left)
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Batch Info Card */}
+            {/* Rich Batch Info Card with Garment Photo */}
             {currentIssue && (
-              <div 
-                style={{
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '6px',
-                  padding: '0.85rem 1rem',
-                  marginBottom: '1.15rem',
-                  fontSize: '0.78rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.4rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                  <span>Artisan: <strong style={{ color: 'var(--text-primary)' }}>{currentIssue.party_name}</strong></span>
-                  <span>Issued: {currentIssue.issued_on}</span>
+              <div className="modal-batch-preview-card">
+                <div className="modal-sku-thumb">
+                  {currentIssue.sku_image_url ? (
+                    <img 
+                      src={currentIssue.sku_image_url} 
+                      alt={currentIssue.sku_name} 
+                      className="modal-sku-img"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <ImageIcon size={20} style={{ color: 'var(--text-tertiary)' }} />
+                  )}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                  <span>Product: {currentIssue.sku_name} ({currentIssue.sku_code})</span>
-                  <span>Available: <strong style={{ color: currentIssue.outstanding_qty > 0 ? '#34d399' : '#f87171' }}>{currentIssue.outstanding_qty} pcs</strong></span>
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                        {currentIssue.sku_name}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', fontFamily: 'JetBrains Mono' }}>
+                        {currentIssue.sku_code} · Dispatched: {currentIssue.issued_on}
+                      </div>
+                    </div>
+                    <span 
+                      className="badge-clean"
+                      style={{
+                        background: currentIssue.outstanding_qty > 0 ? 'var(--status-info-bg)' : 'var(--status-success-bg)',
+                        color: currentIssue.outstanding_qty > 0 ? '#38bdf8' : '#34d399',
+                        border: `1px solid ${currentIssue.outstanding_qty > 0 ? 'var(--status-info-border)' : 'var(--status-success-border)'}`,
+                        fontSize: '0.72rem'
+                      }}
+                    >
+                      {currentIssue.outstanding_qty} pcs remaining
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <Scissors size={11} />
+                    <span>Workshop: <strong>{currentIssue.party_name}</strong> ({currentIssue.party_phone})</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -171,6 +198,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   >
                     1 pc
                   </button>
+                  {maxAvailable > 5 && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
+                      onClick={() => setQty(5)}
+                    >
+                      5 pcs
+                    </button>
+                  )}
                   {maxAvailable > 0 && (
                     <button
                       type="button"
@@ -181,140 +218,156 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                       Max ({maxAvailable})
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', color: '#f87171' }}
-                    onClick={() => setQty(maxAvailable + 5)}
-                    title="Test overshoot"
-                  >
-                    +5 (Overshoot)
-                  </button>
                 </div>
               </div>
 
               <input
                 type="number"
                 min="1"
-                className="form-control"
-                style={{ fontFamily: 'JetBrains Mono', borderColor: isOvershoot ? '#f87171' : undefined }}
+                className={`form-control ${isOvershoot ? 'is-invalid' : ''}`}
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
               />
 
               {isOvershoot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f87171', fontSize: '0.75rem', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontSize: '0.75rem', marginTop: '5px' }}>
                   <AlertCircle size={13} />
-                  <span>Exceeds remaining batch balance ({maxAvailable} pcs). Server will reject with HTTP 422.</span>
+                  <span>
+                    Overshoot risk: Requested {qty} pcs exceeds remaining balance of {maxAvailable} pcs. (Database lock will reject this with HTTP 422).
+                  </span>
                 </div>
               )}
+            </div>
 
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                Credit Amount: <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>{formatINR(estimatedPaise)}</strong> (@ ₹250/pc rate)
-              </div>
+            {/* Calculated Amount */}
+            <div 
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.65rem 0.85rem',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '6px',
+                marginBottom: '1rem',
+                fontSize: '0.8rem',
+              }}
+            >
+              <span style={{ color: 'var(--text-tertiary)' }}>Accounting Voucher Value:</span>
+              <strong style={{ fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
+                {formatINR(estimatedPaise)}
+              </strong>
             </div>
 
             {/* Idempotency Key */}
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                 <label className="form-label" style={{ marginBottom: 0 }}>
-                  Idempotency-Key Header
+                  Idempotency-Key (Header)
                 </label>
                 <div style={{ display: 'flex', gap: '0.35rem' }}>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
-                    onClick={handleGenerateKey}
-                  >
-                    Fresh Key
-                  </button>
                   {lastUsedKey && (
                     <button
                       type="button"
                       className="btn-secondary"
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
+                      style={{ padding: '0.2rem 0.45rem', fontSize: '0.7rem' }}
                       onClick={handleReplayKey}
-                      title="Test idempotent replay"
+                      title="Replay last key to test deduplication"
                     >
-                      Replay Last Key
+                      Replay Previous Key
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '0.2rem 0.45rem', fontSize: '0.7rem' }}
+                    onClick={handleGenerateKey}
+                    title="Generate new UUID key"
+                  >
+                    <RefreshCw size={10} />
+                    <span>New Key</span>
+                  </button>
                 </div>
               </div>
 
-              <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', gap: '0.45rem' }}>
                 <input
                   type="text"
                   className="form-control"
-                  style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', paddingRight: '2rem' }}
+                  style={{ fontFamily: 'JetBrains Mono', fontSize: '0.78rem' }}
                   value={idempotencyKey}
                   onChange={(e) => setIdempotencyKey(e.target.value)}
+                  placeholder="idem-..."
                 />
                 <button
                   type="button"
+                  className="btn-secondary"
                   onClick={handleCopyKey}
-                  style={{
-                    position: 'absolute',
-                    right: '6px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    color: copiedKey ? '#34d399' : 'var(--text-tertiary)',
-                    cursor: 'pointer',
-                  }}
-                  title="Copy Key"
+                  title="Copy to clipboard"
+                  style={{ padding: '0 0.65rem' }}
                 >
-                  {copiedKey ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedKey ? <Check size={13} style={{ color: '#34d399' }} /> : <Copy size={13} />}
                 </button>
               </div>
             </div>
 
-            {/* Race condition toggle */}
+            {/* Concurrency Stress Switch */}
             <div 
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.65rem',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border-subtle)',
+                justifyContent: 'space-between',
                 padding: '0.65rem 0.85rem',
                 borderRadius: '6px',
+                background: simulateRace ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-subtle)',
+                border: `1px solid ${simulateRace ? 'rgba(59, 130, 246, 0.3)' : 'var(--border-subtle)'}`,
                 cursor: 'pointer',
               }}
               onClick={() => setSimulateRace(!simulateRace)}
             >
-              <input
-                type="checkbox"
-                id="race-toggle"
-                checked={simulateRace}
-                onChange={(e) => setSimulateRace(e.target.checked)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={14} style={{ color: simulateRace ? '#38bdf8' : 'var(--text-tertiary)' }} />
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Simulate Race Condition
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                    Fires 2 parallel requests simultaneously with identical key to verify DB deduplication
+                  </div>
+                </div>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={simulateRace} 
+                onChange={(e) => setSimulateRace(e.target.checked)} 
                 style={{ cursor: 'pointer' }}
               />
-              <label htmlFor="race-toggle" style={{ fontSize: '0.78rem', cursor: 'pointer', flex: 1 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Simulate Concurrent Double-Tap</strong>
-                <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.72rem' }}>
-                  Fires 2 parallel requests simultaneously with the same key to verify database locking.
-                </span>
-              </label>
             </div>
           </div>
 
           <div className="ent-modal-footer">
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={submitting}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={submitting}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={submitting || !selectedIssueId || qty <= 0}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={submitting || !selectedIssueId || qty <= 0}
+            >
               {submitting ? (
                 <>
                   <RefreshCw size={13} className="spin" />
-                  <span>Processing...</span>
+                  <span>Processing Transaction...</span>
                 </>
               ) : (
                 <>
                   <Send size={13} />
-                  <span>{simulateRace ? 'Fire Concurrent Requests' : 'Confirm & Dispatch'}</span>
+                  <span>Record Receipt ({qty} pcs)</span>
                 </>
               )}
             </button>

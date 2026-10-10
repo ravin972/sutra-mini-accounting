@@ -1,18 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Table as TableIcon, 
-  Package, 
-  Terminal, 
-  ShieldCheck 
-} from 'lucide-react';
-
 import { Voucher, IssueSummary, ToastMessage } from '../../types';
+import { Sidebar } from '../../components/Sidebar';
 import { Navbar } from '../../components/Navbar';
 import { StatsRibbon } from '../../components/StatsRibbon';
 import { VouchersView } from '../../components/VouchersView';
 import { IssuesView } from '../../components/IssuesView';
+import { ProductsCatalogView } from '../../components/ProductsCatalogView';
 import { AskAssistant } from '../../components/AskAssistant';
 import { ResiliencePlayground } from '../../components/ResiliencePlayground';
 import { ReceiptModal } from '../../components/ReceiptModal';
@@ -22,7 +17,7 @@ import { Toast } from '../../components/Toast';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082';
 
 export default function SyncDashboardPage() {
-  const [activeTab, setActiveTab] = useState<'vouchers' | 'issues' | 'ask' | 'resilience'>('vouchers');
+  const [activeTab, setActiveTab] = useState<'vouchers' | 'issues' | 'catalog' | 'ask' | 'resilience'>('vouchers');
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [issues, setIssues] = useState<IssueSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -101,6 +96,7 @@ export default function SyncDashboardPage() {
     }
   }, []);
 
+  // Suppress 3rd-party extension errors like MetaMask in developer preview
   useEffect(() => {
     const handleRejection = (e: PromiseRejectionEvent) => {
       const reasonStr = (e.reason?.stack || e.reason?.message || e.reason?.toString() || '');
@@ -271,109 +267,102 @@ export default function SyncDashboardPage() {
     }
   };
 
+  const tabTitles: Record<string, string> = {
+    vouchers: 'Outbox Stream',
+    issues: 'Jobwork Batches',
+    catalog: 'Garment Catalog',
+    ask: 'Ledger Copilot',
+    resilience: 'Resilience Suite',
+  };
+
+  const failedCount = vouchers.filter((v) => v.status === 'failed').length;
+
   return (
-    <div className="app-shell">
-      {/* Enterprise Navbar */}
-      <Navbar
-        apiBase={API_BASE}
-        isHealthy={isHealthy}
-        autoRefresh={autoRefresh}
-        setAutoRefresh={setAutoRefresh}
-        loading={loading}
-        onRefresh={() => {
-          fetchVouchers(false);
-          fetchIssues();
-        }}
-        onOpenReceiptModal={() => handleOpenReceiptModal()}
-        onOpenAskTab={() => setActiveTab('ask')}
+    <div className="product-shell">
+      {/* SaaS Product Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        vouchersCount={vouchers.length}
+        issuesCount={issues.length}
+        failedCount={failedCount}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        isHealthy={isHealthy}
+        onOpenReceiptModal={() => handleOpenReceiptModal()}
       />
 
-      {/* KPI Stats Row */}
-      <StatsRibbon
-        vouchers={vouchers}
-        issues={issues}
-        onRetryAllFailed={handleRetryAllFailed}
-        isRetryingAll={isRetryingAll}
-      />
+      {/* Main SaaS Canvas */}
+      <div className="product-main-area">
+        {/* Enterprise Topbar */}
+        <Navbar
+          apiBase={API_BASE}
+          isHealthy={isHealthy}
+          autoRefresh={autoRefresh}
+          setAutoRefresh={setAutoRefresh}
+          loading={loading}
+          onRefresh={() => {
+            fetchVouchers(false);
+            fetchIssues();
+          }}
+          onOpenReceiptModal={() => handleOpenReceiptModal()}
+          onOpenAskTab={() => setActiveTab('ask')}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          activeTabTitle={tabTitles[activeTab]}
+        />
 
-      {/* Enterprise Tabs Navigation */}
-      <div className="ent-tabs-bar">
-        <div className="ent-tab-list">
-          <button
-            type="button"
-            className={`ent-tab-btn ${activeTab === 'vouchers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('vouchers')}
-          >
-            <TableIcon size={14} />
-            <span>Outbox Stream</span>
-            <span className="ent-pill-count">{vouchers.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`ent-tab-btn ${activeTab === 'issues' ? 'active' : ''}`}
-            onClick={() => setActiveTab('issues')}
-          >
-            <Package size={14} />
-            <span>Jobwork Batches</span>
-            <span className="ent-pill-count">{issues.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`ent-tab-btn ${activeTab === 'ask' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ask')}
-          >
-            <Terminal size={14} />
-            <span>Ledger Copilot</span>
-          </button>
-
-          <button
-            type="button"
-            className={`ent-tab-btn ${activeTab === 'resilience' ? 'active' : ''}`}
-            onClick={() => setActiveTab('resilience')}
-          >
-            <ShieldCheck size={14} />
-            <span>Resilience Suite</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Active Tab View */}
-      <main>
+        {/* Outbox KPI Ribbon (only on vouchers tab or whenever needed) */}
         {activeTab === 'vouchers' && (
-          <VouchersView
+          <StatsRibbon
             vouchers={vouchers}
-            onSelectVoucher={(v) => setSelectedVoucher(v)}
-            onRetry={handleRetryVoucher}
-            retryingId={retryingId}
-          />
-        )}
-
-        {activeTab === 'issues' && (
-          <IssuesView
             issues={issues}
-            onIssueReceipt={(issueId) => handleOpenReceiptModal(issueId)}
+            onRetryAllFailed={handleRetryAllFailed}
+            isRetryingAll={isRetryingAll}
           />
         )}
 
-        {activeTab === 'ask' && (
-          <AskAssistant apiBase={API_BASE} />
-        )}
+        {/* Active Tab View */}
+        <main className="product-content">
+          {activeTab === 'vouchers' && (
+            <VouchersView
+              vouchers={vouchers}
+              onSelectVoucher={(v) => setSelectedVoucher(v)}
+              onRetry={handleRetryVoucher}
+              retryingId={retryingId}
+            />
+          )}
 
-        {activeTab === 'resilience' && (
-          <ResiliencePlayground
-            apiBase={API_BASE}
-            issues={issues}
-            onTriggerRefresh={() => {
-              fetchVouchers(true);
-              fetchIssues();
-            }}
-          />
-        )}
-      </main>
+          {activeTab === 'issues' && (
+            <IssuesView
+              issues={issues}
+              onIssueReceipt={(issueId) => handleOpenReceiptModal(issueId)}
+            />
+          )}
+
+          {activeTab === 'catalog' && (
+            <ProductsCatalogView
+              issues={issues}
+              onIssueReceipt={(issueId) => handleOpenReceiptModal(issueId)}
+            />
+          )}
+
+          {activeTab === 'ask' && (
+            <AskAssistant apiBase={API_BASE} />
+          )}
+
+          {activeTab === 'resilience' && (
+            <ResiliencePlayground
+              apiBase={API_BASE}
+              issues={issues}
+              onTriggerRefresh={() => {
+                fetchVouchers(true);
+                fetchIssues();
+              }}
+            />
+          )}
+        </main>
+      </div>
 
       {/* Record Receipt Dialog */}
       <ReceiptModal

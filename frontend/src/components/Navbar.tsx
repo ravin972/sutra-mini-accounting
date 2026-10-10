@@ -4,10 +4,12 @@ import React from 'react';
 import { 
   Plus, 
   RefreshCw, 
-  Terminal, 
   Activity,
   Sun,
-  Moon
+  Moon,
+  Search,
+  Bell,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -21,6 +23,7 @@ interface NavbarProps {
   onOpenAskTab: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
+  activeTabTitle: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,43 +37,42 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAskTab,
   theme,
   onToggleTheme,
+  activeTabTitle,
 }) => {
   return (
     <header className="ent-header">
       <div className="ent-brand-group">
-        <div className="ent-logo-badge" title="Shree Radha Studio">
-          SRS
-        </div>
         <div className="ent-title-area">
           <div className="ent-breadcrumbs">
-            <span>Manufacturing</span>
+            <span>Shree Radha Studio</span>
             <span>/</span>
-            <span>Jobwork Ledger</span>
+            <span>Gandhi Nagar Ops</span>
+            <span>/</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{activeTabTitle}</span>
           </div>
           <div className="ent-title">
-            Sutra Mini
+            <span>{activeTabTitle}</span>
             <span className="ent-env-badge">
               <span 
                 className="ent-status-dot" 
                 style={{ background: isHealthy ? 'var(--status-success)' : 'var(--status-danger)' }} 
               />
-              {isHealthy ? 'Live (:8082)' : 'Connecting'}
+              {isHealthy ? 'Backend :8082 Active' : 'Connecting...'}
             </span>
           </div>
         </div>
       </div>
 
       <div className="ent-actions">
-        {/* Theme Toggle Button */}
+        {/* Quick Action: Record Receipt */}
         <button
           type="button"
-          className="btn-secondary"
-          onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          className="btn-primary"
+          onClick={onOpenReceiptModal}
           style={{ fontSize: '0.78rem' }}
         >
-          {theme === 'dark' ? <Sun size={13} style={{ color: '#fbbf24' }} /> : <Moon size={13} style={{ color: '#6366f1' }} />}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          <Plus size={13} />
+          <span>New Receipt</span>
         </button>
 
         {/* Auto Refresh pill toggle */}
@@ -95,30 +97,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={onRefresh}
           disabled={loading}
           title="Refresh ledger state"
+          style={{ fontSize: '0.78rem' }}
         >
           <RefreshCw size={13} className={loading ? 'spin' : ''} />
           <span>Sync Now</span>
         </button>
 
-        {/* Ask AI Assistant */}
-        <button 
-          type="button" 
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
           className="btn-secondary"
-          onClick={onOpenAskTab}
-          title="Query ledger with natural language"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          style={{ fontSize: '0.78rem', padding: '0.45rem 0.65rem' }}
         >
-          <Terminal size={13} />
-          <span>Ask Assistant</span>
-        </button>
-
-        {/* Primary Action: Record Receipt */}
-        <button 
-          type="button" 
-          className="btn-primary"
-          onClick={onOpenReceiptModal}
-        >
-          <Plus size={15} />
-          <span>Record Receipt</span>
+          {theme === 'dark' ? (
+            <Sun size={13} style={{ color: '#fbbf24' }} />
+          ) : (
+            <Moon size={13} style={{ color: '#6366f1' }} />
+          )}
         </button>
       </div>
     </header>

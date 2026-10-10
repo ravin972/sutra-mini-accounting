@@ -7,7 +7,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Scissors,
+  Phone,
+  Image as ImageIcon
 } from 'lucide-react';
 import { IssueSummary } from '../types';
 
@@ -65,14 +68,14 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
           <input
             type="text"
             className="ent-search-input"
-            placeholder="Filter by artisan or product code..."
+            placeholder="Filter by artisan workshop, product name, or SKU code..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
         <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-          {totalItems} active artisan batches
+          {totalItems} active artisan batches in production
         </div>
       </div>
 
@@ -81,11 +84,11 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
         <table className="ent-table">
           <thead>
             <tr>
-              <th>Artisan / Workshop</th>
-              <th>Product SKU</th>
+              <th>Garment Product</th>
+              <th>Artisan Workshop</th>
               <th>Reconciliation Progress</th>
               <th>Balance Remaining</th>
-              <th>Issued On</th>
+              <th>Dispatched On</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -103,41 +106,67 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
 
                 return (
                   <tr key={issue.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {issue.party_name}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
-                        {issue.party_phone}
+                    {/* Product SKU with Photo */}
+                    <td style={{ minWidth: '220px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="table-sku-thumb">
+                          {issue.sku_image_url ? (
+                            <img 
+                              src={issue.sku_image_url} 
+                              alt={issue.sku_name} 
+                              className="table-sku-img"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <ImageIcon size={18} style={{ color: 'var(--text-tertiary)' }} />
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                            {issue.sku_name}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', fontFamily: 'JetBrains Mono', marginTop: '1px' }}>
+                            {issue.sku_code}
+                          </div>
+                        </div>
                       </div>
                     </td>
 
+                    {/* Artisan Workshop */}
                     <td>
-                      <div style={{ fontWeight: 500 }}>
-                        {issue.sku_name}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Scissors size={12} style={{ color: 'var(--text-tertiary)' }} />
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                          {issue.party_name}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', fontFamily: 'JetBrains Mono' }}>
-                        {issue.sku_code}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        <Phone size={10} />
+                        <span>{issue.party_phone}</span>
                       </div>
                     </td>
 
-                    <td style={{ minWidth: '180px' }}>
+                    {/* Reconciliation Progress */}
+                    <td style={{ minWidth: '170px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>{issue.total_received_qty} / {issue.issued_qty} pcs</span>
                         <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{pct}%</span>
                       </div>
-                      <div style={{ height: '4px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '5px', background: 'var(--bg-muted)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div 
                           style={{ 
                             height: '100%', 
                             width: `${pct}%`, 
-                            background: isCompleted ? '#10b981' : '#3b82f6',
+                            background: isCompleted ? 'var(--status-success)' : 'var(--accent-primary)',
                             transition: 'width 0.3s ease' 
                           }} 
                         />
                       </div>
                     </td>
 
+                    {/* Balance */}
                     <td>
                       <span 
                         className="badge-clean"
@@ -152,17 +181,19 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                       </span>
                     </td>
 
+                    {/* Date */}
                     <td>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
                         {issue.issued_on}
                       </span>
                     </td>
 
+                    {/* Action */}
                     <td style={{ textAlign: 'right' }}>
                       <button
                         type="button"
                         className={isCompleted ? 'btn-secondary' : 'btn-primary'}
-                        style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
                         onClick={() => onIssueReceipt(issue.id)}
                         disabled={isCompleted}
                       >
