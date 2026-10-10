@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sutra-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: sutra_mini
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./migrations/002_seed_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  mock-accounting:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.mock
+    container_name: sutra-mock
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      MOCK_ACCOUNTING_PORT: 8081
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    container_name: sutra-api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/sutra_mini?sslmode=disable
+      PORT: 8080
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: sutra-worker
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock-accounting:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/sutra_mini?sslmode=disable
+      MOCK_ACCOUNTING_URL: http://mock-accounting:8081
+      WORKER_POLL_INTERVAL: 1s
+      WORKER_CONCURRENCY: 4
+      WORKER_LEASE_SECONDS: 30
+      WORKER_MAX_ATTEMPTS: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sutra-frontend
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+
+volumes:
+  pgdata:
