@@ -28,6 +28,25 @@ export default function SyncDashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [isHealthy, setIsHealthy] = useState<boolean>(true);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Load and apply theme
+  useEffect(() => {
+    const saved = localStorage.getItem('sutra_theme') as 'dark' | 'light' | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute('data-theme', saved);
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('sutra_theme', nextTheme);
+  };
 
   // Modals & Drawers
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
@@ -267,6 +286,8 @@ export default function SyncDashboardPage() {
         }}
         onOpenReceiptModal={() => handleOpenReceiptModal()}
         onOpenAskTab={() => setActiveTab('ask')}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* KPI Stats Row */}

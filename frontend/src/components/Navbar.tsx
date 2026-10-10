@@ -6,8 +6,8 @@ import {
   RefreshCw, 
   Terminal, 
   Activity,
-  CheckCircle,
-  AlertCircle
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -19,6 +19,8 @@ interface NavbarProps {
   onRefresh: () => void;
   onOpenReceiptModal: () => void;
   onOpenAskTab: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -30,6 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRefresh,
   onOpenReceiptModal,
   onOpenAskTab,
+  theme,
+  onToggleTheme,
 }) => {
   return (
     <header className="ent-header">
@@ -57,6 +61,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="ent-actions">
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          style={{ fontSize: '0.78rem' }}
+        >
+          {theme === 'dark' ? <Sun size={13} style={{ color: '#fbbf24' }} /> : <Moon size={13} style={{ color: '#6366f1' }} />}
+          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+        </button>
+
         {/* Auto Refresh pill toggle */}
         <button 
           type="button" 
