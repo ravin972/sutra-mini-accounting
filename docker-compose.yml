@@ -23,8 +23,8 @@ services:
 
   mock-accounting:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.mock
+      context: .
+      dockerfile: backend/Dockerfile.mock
     container_name: sutra-mock
     restart: always
     ports:
@@ -34,8 +34,8 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.api
+      context: .
+      dockerfile: backend/Dockerfile.api
     container_name: sutra-api
     restart: always
     depends_on:
@@ -49,8 +49,8 @@ services:
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.worker
+      context: .
+      dockerfile: backend/Dockerfile.worker
     container_name: sutra-worker
     restart: always
     depends_on:
